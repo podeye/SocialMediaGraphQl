@@ -1,6 +1,7 @@
 const Post = require('../../models/Post');
 const checkAuth = require('../../util/checkAuth');
-const {AuthenticationError} = require('apollo-server');
+const {AuthenticationError, UserInputError} = require('apollo-server');
+const { argsToArgsConfig } = require('graphql/type/definition');
 
 module.exports =  {
   Query:{
@@ -28,8 +29,11 @@ module.exports =  {
 Mutation: {
   async createPost(_,{body}, context){
     const user = checkAuth(context);
-    console.log('USER', user);
-    console.log('context', context);
+
+    if(body.trim()===''){
+      throw new Error("Post body must not be empty!!!")
+    }
+
     const newPost = new Post({
       body,
       user:user.indexOf,
@@ -37,6 +41,11 @@ Mutation: {
       createdAt: new Date().toISOString()
     })
     const post = newPost.save();
+
+    context.pubsub.publish('NEW_POST',{
+      newPost:post
+    })
+
     return post;
   },
   async deletePost(parent,{postId}, context){
@@ -52,6 +61,31 @@ Mutation: {
     }catch(err){
       throw new Error(err);
     }
+    },
+    async likePost(parent,{postId},context){
+      const {username} = checkAuth(context);
+      const post = await Post.findById(postId);
+      if(post){
+        if(post.likes.find(like=> like.username === username)){
+          // Post already liked, unlike it
+          post.likes = post.likes.filter(like=> like.username !== username)
+        }else{
+          // not liked, like post
+          post.likes.push({
+            username,
+            createdAt: new Date().toISOString()
+          })
+        }
+        await post.save();
+        return post;
+      }else{
+        throw new UserInputError('Post not found')
+      }
+    }
+  },
+  Subscription:{
+    newPost:{
+      subscribe: (parent,_,{pubsub}) => pubsub.asyncIterator('NEW_POST')
     }
   }
 }
