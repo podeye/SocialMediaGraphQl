@@ -1,6 +1,6 @@
 import React, {useContext} from 'react'
 import {useQuery} from '@apollo/client';
-import { Grid } from 'semantic-ui-react';
+import { Grid, TransitionGroup } from 'semantic-ui-react';
 import PostCard from '../components/PostCard';
 import {AuthContext} from '../context/auth';
 import PostForm from '../components/PostForm';
@@ -29,9 +29,9 @@ const Home = () => {
       ):(
         posts && posts.map(post => {
           return (
-            <Grid.Column key={post.id} style={{marginBottom:20}}>
-              <PostCard post={post}/>
-            </Grid.Column>
+              <Grid.Column style={{marginBottom:20}} key={post.id}>
+                <PostCard post={post}/>
+              </Grid.Column>
           )
         })
       )}
